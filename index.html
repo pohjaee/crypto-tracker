@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Портфель</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+  body {
+    background: #0F1115;
+    color: #E8E6E1;
+    font-family: 'Inter', sans-serif;
+    padding: 20px 16px 60px;
+  }
+  .container { max-width: 560px; margin: 0 auto; }
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .brand { font-size: 14px; font-weight: 500; color: #B8B6AE; }
+  .refresh-btn {
+    display: flex; align-items: center; gap: 6px;
+    background: transparent; border: 1px solid #2A2D35; color: #B8B6AE;
+    border-radius: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer;
+  }
+  .refresh-btn:disabled { opacity: 0.5; }
+  .spin { animation: spin 1s linear infinite; display: inline-block; }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .hero { border-bottom: 1px solid #22252C; padding-bottom: 24px; margin-bottom: 20px; }
+  .hero-label { font-size: 13px; color: #8B8D97; margin-bottom: 6px; }
+  .hero-value { font-family: 'Fraunces', serif; font-size: 44px; font-weight: 500; color: #F4F2ED; line-height: 1.1; }
+  .hero-pnl { display: flex; align-items: center; gap: 6px; font-size: 14px; margin-top: 10px; font-family: 'JetBrains Mono', monospace; }
+  .hero-note { font-size: 12px; color: #5F616B; margin-top: 8px; }
+  .error-text { font-size: 12px; color: #D67A66; margin-top: 8px; }
+  .alloc-bar { display: flex; width: 100%; height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 10px; background: #1A1C22; }
+  .alloc-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-bottom: 28px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #B8B6AE; }
+  .legend-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  .legend-pct { color: #5F616B; }
+  .section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .section-title { font-size: 15px; font-weight: 500; }
+  .add-btn {
+    display: flex; align-items: center; gap: 6px;
+    background: #C9A24B; color: #1A1508; border: none; border-radius: 8px;
+    padding: 8px 14px; font-size: 13px; font-weight: 500; cursor: pointer;
+  }
+  .form-card { background: #171A21; border: 1px solid #22252C; border-radius: 10px; padding: 16px; margin-bottom: 18px; display: none; }
+  .form-card.open { display: block; }
+  .form-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  select, input {
+    background: #0F1115; color: #E8E6E1; border: 1px solid #2A2D35; border-radius: 6px;
+    padding: 9px 10px; font-size: 13px; font-family: 'Inter', sans-serif; flex: 1 1 140px;
+  }
+  input { font-family: 'JetBrains Mono', monospace; }
+  .save-btn { background: #7FB08A; color: #0D2013; border: none; border-radius: 6px; padding: 9px 18px; font-size: 13px; font-weight: 500; cursor: pointer; flex: 1 1 100px; }
+  .empty-state { background: #171A21; border: 1px dashed #2A2D35; border-radius: 10px; padding: 32px 16px; text-align: center; color: #8B8D97; font-size: 13px; }
+  .table-head { display: flex; padding: 0 4px 8px; border-bottom: 1px solid #22252C; font-size: 11px; color: #5F616B; }
+  .row { display: flex; align-items: center; padding: 14px 4px; border-bottom: 1px solid #1A1C22; }
+  .asset-col { flex: 2; display: flex; flex-direction: column; }
+  .asset-top { display: flex; align-items: center; gap: 6px; }
+  .asset-symbol { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; }
+  .asset-name { font-size: 11px; color: #5F616B; margin-top: 2px; }
+  .chart-link { color: #5F616B; display: flex; align-items: center; text-decoration: none; }
+  .cell { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: #C7C5BE; text-align: right; }
+  .price-cell { flex: 1.3; }
+  .price-btn { background: transparent; border: none; border-bottom: 1px dashed #3A3D46; color: #C7C5BE; font-family: 'JetBrains Mono', monospace; font-size: 13px; cursor: pointer; padding: 0; }
+  .price-edit { width: 90px; background: #0F1115; color: #E8E6E1; border: 1px solid #C9A24B; border-radius: 6px; padding: 5px 7px; font-size: 12px; font-family: 'JetBrains Mono', monospace; }
+  .confirm-btn { background: #7FB08A; color: #0D2013; border: none; border-radius: 6px; padding: 5px 7px; cursor: pointer; }
+  .delete-btn { background: transparent; border: none; color: #5F616B; cursor: pointer; padding: 4px; }
+  .pnl-up { color: #7FB08A; }
+  .pnl-down { color: #D67A66; }
+  .sub { font-size: 11px; }
+  .icon { width: 14px; height: 14px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <span class="brand">Портфель</span>
+    <button class="refresh-btn" id="refreshBtn">
+      <span id="refreshIcon">↻</span>
+      <span id="refreshLabel">Обновить курсы</span>
+    </button>
+  </div>
+
+  <div class="hero">
+    <div class="hero-label">Общая стоимость</div>
+    <div class="hero-value" id="totalValue">$0.00</div>
+    <div class="hero-pnl" id="heroPnl" style="display:none;"></div>
+    <div class="hero-note" id="heroNote">Нажмите «Обновить курсы», чтобы подтянуть актуальные цены.</div>
+    <div class="error-text" id="priceError" style="display:none;"></div>
+  </div>
+
+  <div id="allocationSection" style="display:none;">
+    <div class="alloc-bar" id="allocBar"></div>
+    <div class="alloc-legend" id="allocLegend"></div>
+  </div>
+
+  <div class="section-head">
+    <span class="section-title">Активы</span>
+    <button class="add-btn" id="toggleFormBtn">+ Добавить актив</button>
+  </div>
+
+  <div class="form-card" id="formCard">
+    <div class="form-row">
+      <select id="coinSelect"></select>
+    </div>
+    <div class="form-row">
+      <input type="number" id="qtyInput" placeholder="Количество" min="0" step="any" />
+      <input type="number" id="buyPriceInput" placeholder="Цена покупки, $" min="0" step="any" />
+      <input type="number" id="curPriceInput" placeholder="Текущая цена, $" min="0" step="any" />
+    </div>
+    <div class="form-row">
+      <button class="save-btn" id="saveHoldingBtn">Сохранить</button>
+    </div>
+    <div class="error-text" id="formError" style="display:none;"></div>
+  </div>
+
+  <div class="empty-state" id="emptyState" style="display:none;">
+    Пока нет активов. Добавьте первую монету, чтобы начать отслеживать портфель.
+  </div>
+
+  <div id="tableWrap" style="display:none;">
+    <div class="table-head">
+      <span style="flex:2;">Актив</span>
+      <span style="flex:1.3; text-align:right;">Кол-во</span>
+      <span style="flex:1.3; text-align:right;">Покупка</span>
+      <span style="flex:1.3; text-align:right;">Текущая ✎</span>
+      <span style="flex:1.5; text-align:right;">Стоимость</span>
+      <span style="flex:1.5; text-align:right;">P&L</span>
+      <span style="flex:0.5;"></span>
+    </div>
+    <div id="rows"></div>
+  </div>
+</div>
+
+<script>
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+
+const COINS = [
+  { id: "bitcoin", symbol: "BTC", name: "Bitcoin", cmc: "bitcoin" },
+  { id: "ethereum", symbol: "ETH", name: "Ethereum", cmc: "ethereum" },
+  { id: "tether", symbol: "USDT", name: "Tether", cmc: "tether" },
+  { id: "binancecoin", symbol: "BNB", name: "BNB", cmc: "bnb" },
+  { id: "solana", symbol: "SOL", name: "Solana", cmc: "solana" },
+  { id: "usd-coin", symbol: "USDC", name: "USD Coin", cmc: "usd-coin" },
+  { id: "ripple", symbol: "XRP", name: "XRP", cmc: "xrp" },
+  { id: "dogecoin", symbol: "DOGE", name: "Dogecoin", cmc: "dogecoin" },
+  { id: "cardano", symbol: "ADA", name: "Cardano", cmc: "cardano" },
+  { id: "tron", symbol: "TRX", name: "TRON", cmc: "tron" },
+  { id: "avalanche-2", symbol: "AVAX", name: "Avalanche", cmc: "avalanche" },
+  { id: "shiba-inu", symbol: "SHIB", name: "Shiba Inu", cmc: "shiba-inu" },
+  { id: "chainlink", symbol: "LINK", name: "Chainlink", cmc: "chainlink" },
+  { id: "polkadot", symbol: "DOT", name: "Polkadot", cmc: "polkadot-new" },
+  { id: "bitcoin-cash", symbol: "BCH", name: "Bitcoin Cash", cmc: "bitcoin-cash" },
+  { id: "near", symbol: "NEAR", name: "NEAR Protocol", cmc: "near-protocol" },
+  { id: "litecoin", symbol: "LTC", name: "Litecoin", cmc: "litecoin" },
+  { id: "uniswap", symbol: "UNI", name: "Uniswap", cmc: "uniswap" },
+  { id: "internet-computer", symbol: "ICP", name: "Internet Computer", cmc: "internet-computer" },
+  { id: "sui", symbol: "SUI", name: "Sui", cmc: "sui" },
+  { id: "aptos", symbol: "APT", name: "Aptos", cmc: "aptos" },
+  { id: "stellar", symbol: "XLM", name: "Stellar", cmc: "stellar" },
+  { id: "monero", symbol: "XMR", name: "Monero", cmc: "monero" },
+  { id: "ethereum-classic", symbol: "ETC", name: "Ethereum Classic", cmc: "ethereum-classic" },
+  { id: "filecoin", symbol: "FIL", name: "Filecoin", cmc: "filecoin" },
+  { id: "cosmos", symbol: "ATOM", name: "Cosmos Hub", cmc: "cosmos" },
+  { id: "arbitrum", symbol: "ARB", name: "Arbitrum", cmc: "arbitrum" },
+  { id: "optimism", symbol: "OP", name: "Optimism", cmc: "optimism-ethereum" },
+  { id: "pepe", symbol: "PEPE", name: "Pepe", cmc: "pepe" },
+];
+const COIN_BY_ID = Object.fromEntries(COINS.map(c => [c.id, c]));
+const PALETTE = ["#C9A24B", "#7C9A82", "#B4694B", "#5B7C99", "#8B6E9E", "#A9A48D"];
+
+const fmtUsd = (n) => {
+  const num = typeof n === "number" && !Number.isNaN(n) ? n : 0;
+  return num.toLocaleString("ru-RU", { style: "currency", currency: "USD", maximumFractionDigits: num >= 1 ? 2 : 8, minimumFractionDigits: 2 });
+};
+const fmtPct = (n) => `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
+
+// --- Storage: Telegram CloudStorage (syncs across the user's devices) with localStorage fallback ---
+const STORAGE_KEY = "crypto_holdings";
+function storageGet() {
+  return new Promise((resolve) => {
+    if (tg?.CloudStorage) {
+      tg.CloudStorage.getItem(STORAGE_KEY, (err, value) => resolve(!err && value ? value : null));
+    } else {
+      resolve(localStorage.getItem(STORAGE_KEY));
+    }
+  });
+}
+function storageSet(value) {
+  return new Promise((resolve) => {
+    if (tg?.CloudStorage) {
+      tg.CloudStorage.setItem(STORAGE_KEY, value, () => resolve());
+    } else {
+      localStorage.setItem(STORAGE_KEY, value);
+      resolve();
+    }
+  });
+}
+
+let holdings = [];
+let editingPriceId = null;
+
+async function loadHoldings() {
+  const raw = await storageGet();
+  if (raw) {
+    try {
+      holdings = JSON.parse(raw).map(h => ({
+        ...h,
+        quantity: Number(h.quantity) || 0,
+        avgBuyPrice: Number(h.avgBuyPrice) || 0,
+        currentPrice: Number(h.currentPrice) || Number(h.avgBuyPrice) || 0,
+      }));
+    } catch (e) { holdings = []; }
+  }
+  render();
+  if (holdings.length > 0) refreshPrices();
+}
+
+async function saveHoldings() {
+  await storageSet(JSON.stringify(holdings));
+  render();
+}
+
+function populateCoinSelect() {
+  const sel = document.getElementById("coinSelect");
+  sel.innerHTML = COINS.map(c => `<option value="${c.id}">${c.name} (${c.symbol})</option>`).join("");
+}
+
+async function addHolding() {
+  const coinId = document.getElementById("coinSelect").value;
+  const qty = parseFloat(document.getElementById("qtyInput").value);
+  const buyPrice = parseFloat(document.getElementById("buyPriceInput").value);
+  const curPrice = parseFloat(document.getElementById("curPriceInput").value);
+  const errEl = document.getElementById("formError");
+
+  if (!qty || qty <= 0) { showFormError("Введите количество больше нуля."); return; }
+  if (!buyPrice || buyPrice <= 0) { showFormError("Введите цену покупки больше нуля."); return; }
+  if (!curPrice || curPrice <= 0) { showFormError("Введите текущую цену больше нуля."); return; }
+  errEl.style.display = "none";
+
+  const coin = COIN_BY_ID[coinId];
+  holdings.push({
+    id: `${coinId}-${Date.now()}`,
+    coinId, symbol: coin.symbol, name: coin.name,
+    quantity: qty, avgBuyPrice: buyPrice, currentPrice: curPrice,
+  });
+  await saveHoldings();
+  document.getElementById("qtyInput").value = "";
+  document.getElementById("buyPriceInput").value = "";
+  document.getElementById("curPriceInput").value = "";
+  document.getElementById("formCard").classList.remove("open");
+  refreshPrices();
+}
+function showFormError(msg) {
+  const el = document.getElementById("formError");
+  el.textContent = msg;
+  el.style.display = "block";
+}
+
+async function removeHolding(id) {
+  holdings = holdings.filter(h => h.id !== id);
+  await saveHoldings();
+}
+
+function startEditPrice(id) {
+  editingPriceId = id;
+  render();
+}
+async function commitPrice(id, value) {
+  const val = parseFloat(value);
+  if (val && val > 0) {
+    holdings = holdings.map(h => h.id === id ? { ...h, currentPrice: val } : h);
+    await saveHoldings();
+  }
+  editingPriceId = null;
+  render();
+}
+
+function openChart(h) {
+  const coin = COIN_BY_ID[h.coinId];
+  const url = `https://coinmarketcap.com/currencies/${coin?.cmc || h.symbol.toLowerCase()}/`;
+  if (tg?.openLink) tg.openLink(url); else window.open(url, "_blank");
+}
+
+async function refreshPrices() {
+  if (holdings.length === 0) return;
+  const btn = document.getElementById("refreshBtn");
+  const icon = document.getElementById("refreshIcon");
+  const label = document.getElementById("refreshLabel");
+  const errEl = document.getElementById("priceError");
+  btn.disabled = true;
+  icon.classList.add("spin");
+  label.textContent = "Обновление…";
+  errEl.style.display = "none";
+  try {
+    const ids = [...new Set(holdings.map(h => h.coinId))].join(",");
+    const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`);
+    if (!res.ok) throw new Error("bad response");
+    const data = await res.json();
+    holdings = holdings.map(h => {
+      const p = data[h.coinId];
+      return p?.usd ? { ...h, currentPrice: p.usd, change24h: p.usd_24h_change ?? null } : h;
+    });
+    await storageSet(JSON.stringify(holdings));
+    document.getElementById("heroNote").textContent = `Курсы обновлены: ${new Date().toLocaleTimeString("ru-RU")}`;
+  } catch (e) {
+    errEl.textContent = "Не удалось обновить курсы. Показаны последние известные значения.";
+    errEl.style.display = "block";
+  } finally {
+    btn.disabled = false;
+    icon.classList.remove("spin");
+    label.textContent = "Обновить курсы";
+    render();
+  }
+}
+
+function render() {
+  const enriched = holdings.map(h => {
+    const value = h.currentPrice != null ? h.currentPrice * h.quantity : null;
+    const cost = h.avgBuyPrice * h.quantity;
+    const pnl = value != null ? value - cost : null;
+    const pnlPct = cost > 0 && pnl != null ? (pnl / cost) * 100 : null;
+    return { ...h, value, cost, pnl, pnlPct };
+  });
+
+  const totalValue = enriched.reduce((s, h) => s + (h.value || 0), 0);
+  const totalCost = enriched.reduce((s, h) => s + h.cost, 0);
+  const totalPnl = totalValue - totalCost;
+  const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
+
+  document.getElementById("totalValue").textContent = fmtUsd(totalValue);
+  const pnlEl = document.getElementById("heroPnl");
+  if (totalCost > 0) {
+    pnlEl.style.display = "flex";
+    pnlEl.className = "hero-pnl " + (totalPnl >= 0 ? "pnl-up" : "pnl-down");
+    pnlEl.textContent = `${totalPnl >= 0 ? "▲" : "▼"} ${fmtUsd(Math.abs(totalPnl))} (${fmtPct(totalPnlPct)}) за всё время`;
+  } else {
+    pnlEl.style.display = "none";
+  }
+
+  // allocation
+  const allocSection = document.getElementById("allocationSection");
+  const allocBar = document.getElementById("allocBar");
+  const allocLegend = document.getElementById("allocLegend");
+  const alloc = enriched.filter(h => h.value > 0).map(h => ({ ...h, pct: (h.value / totalValue) * 100 })).sort((a,b) => b.pct - a.pct);
+  if (alloc.length > 0) {
+    allocSection.style.display = "block";
+    allocBar.innerHTML = alloc.map((h, i) => `<div style="width:${h.pct}%; background:${PALETTE[i % PALETTE.length]};"></div>`).join("");
+    allocLegend.innerHTML = alloc.map((h, i) => `
+      <div class="legend-item">
+        <span class="legend-dot" style="background:${PALETTE[i % PALETTE.length]};"></span>
+        <span>${h.symbol}</span>
+        <span class="legend-pct">${h.pct.toFixed(1)}%</span>
+      </div>`).join("");
+  } else {
+    allocSection.style.display = "none";
+  }
+
+  document.getElementById("emptyState").style.display = enriched.length === 0 ? "block" : "none";
+  document.getElementById("tableWrap").style.display = enriched.length > 0 ? "block" : "none";
+
+  document.getElementById("rows").innerHTML = enriched.map(h => `
+    <div class="row">
+      <div class="asset-col">
+        <div class="asset-top">
+          <span class="asset-symbol">${h.symbol}</span>
+          <a class="chart-link" href="#" data-chart="${h.id}" title="Открыть график на CoinMarketCap">📈</a>
+        </div>
+        <span class="asset-name">${h.name}</span>
+      </div>
+      <span class="cell price-cell">${h.quantity.toLocaleString("ru-RU", { maximumFractionDigits: 6 })}</span>
+      <span class="cell price-cell">${fmtUsd(h.avgBuyPrice)}</span>
+      <span class="cell price-cell">
+        ${editingPriceId === h.id
+          ? `<input class="price-edit" type="number" min="0" step="any" value="${h.currentPrice}" data-price-input="${h.id}" />
+             <button class="confirm-btn" data-confirm="${h.id}">✓</button>`
+          : `<button class="price-btn" data-edit="${h.id}">${fmtUsd(h.currentPrice)}</button>
+             ${h.change24h != null ? `<div class="sub ${h.change24h >= 0 ? 'pnl-up' : 'pnl-down'}">${fmtPct(h.change24h)} 24ч</div>` : ""}`
+        }
+      </span>
+      <span class="cell" style="flex:1.5; font-weight:500;">${h.value != null ? fmtUsd(h.value) : "—"}</span>
+      <span class="cell ${h.pnl == null ? '' : h.pnl >= 0 ? 'pnl-up' : 'pnl-down'}" style="flex:1.5;">
+        ${h.pnl != null ? `${fmtUsd(h.pnl)}<div class="sub">${fmtPct(h.pnlPct)}</div>` : "—"}
+      </span>
+      <span style="flex:0.5; text-align:right;">
+        <button class="delete-btn" data-remove="${h.id}">✕</button>
+      </span>
+    </div>
+  `).join("");
+
+  // wire up row events
+  document.querySelectorAll("[data-chart]").forEach(el => {
+    el.addEventListener("click", (e) => {
+      e.preventDefault();
+      const h = holdings.find(x => x.id === el.dataset.chart);
+      if (h) openChart(h);
+    });
+  });
+  document.querySelectorAll("[data-remove]").forEach(el => {
+    el.addEventListener("click", () => removeHolding(el.dataset.remove));
+  });
+  document.querySelectorAll("[data-edit]").forEach(el => {
+    el.addEventListener("click", () => startEditPrice(el.dataset.edit));
+  });
+  document.querySelectorAll("[data-confirm]").forEach(el => {
+    el.addEventListener("click", () => {
+      const input = document.querySelector(`[data-price-input="${el.dataset.confirm}"]`);
+      commitPrice(el.dataset.confirm, input.value);
+    });
+  });
+  document.querySelectorAll("[data-price-input]").forEach(el => {
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") commitPrice(el.dataset.priceInput, el.value);
+    });
+  });
+}
+
+document.getElementById("toggleFormBtn").addEventListener("click", () => {
+  document.getElementById("formCard").classList.toggle("open");
+});
+document.getElementById("saveHoldingBtn").addEventListener("click", addHolding);
+document.getElementById("refreshBtn").addEventListener("click", () => refreshPrices());
+
+populateCoinSelect();
+loadHoldings();
+</script>
+</body>
+</html>
